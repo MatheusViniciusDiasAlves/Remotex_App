@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "shared", "authentication", "security", "remote-input", "media-engine", "screen-capture",
+    "audio", "recording", "admin", "device-management", "signaling-server", "database",
+    "backend/src", "android-app/web/src", "tests/unit", "tests/integration"
+  ],
+  "exclude": ["**/node_modules", "**/dist", "remote-input/windows-injector.ts", "remote-input/linux-injector.ts", "remote-input/injector-factory.ts"]
+}

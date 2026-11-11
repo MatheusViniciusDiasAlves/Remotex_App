@@ -1,0 +1,44 @@
+{
+  "name": "remotex",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RemoteX — acesso e controle remoto de computadores pelo celular (host Windows, cliente Android, backend de sinalização).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:client": "node scripts/build.mjs client",
+    "build:server": "node scripts/build.mjs server",
+    "build:host": "npm --prefix windows-host run build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run tests/unit",
+    "test:integration": "bash scripts/with-test-db.sh vitest run tests/integration",
+    "test:e2e": "bash scripts/run-e2e.sh",
+    "db:migrate": "node dist/server/migrate.js",
+    "start": "node dist/server/server.js",
+    "dev:server": "node scripts/build.mjs server client && node dist/server/server.js"
+  },
+  "dependencies": {
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0",
+    "express": "5.3.0",
+    "helmet": "8.3.0",
+    "jose": "6.2.13",
+    "pg": "8.23.1",
+    "ws": "8.22.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "@types/ws": "^8.5.0",
+    "esbuild": "0.28.2",
+    "koffi": "^3.3.4",
+    "typescript": "5.9.3",
+    "vitest": "4.1.12"
+  }
+}

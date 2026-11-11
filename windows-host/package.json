@@ -1,0 +1,22 @@
+{
+  "name": "remotex-host",
+  "productName": "RemoteX Host",
+  "version": "1.0.0",
+  "description": "RemoteX — programa HOST (computador controlado).",
+  "author": "RemoteX",
+  "license": "UNLICENSED",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node build.mjs && electron .",
+    "dist:win": "node build.mjs && electron-builder --win nsis --x64 --publish never",
+    "dist:dir": "node build.mjs && electron-builder --win dir --x64 --publish never"
+  },
+  "dependencies": {
+    "koffi": "3.3.4"
+  },
+  "devDependencies": {
+    "electron": "44.9.3",
+    "electron-builder": "26.18.0"
+  }
+}
