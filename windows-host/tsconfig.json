@@ -1,0 +1,9 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["src", "../remote-input/windows-injector.ts", "../remote-input/linux-injector.ts", "../remote-input/injector-factory.ts"]
+}
