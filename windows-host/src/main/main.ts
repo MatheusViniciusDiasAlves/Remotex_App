@@ -1,9 +1,13 @@
 /** Ponto de entrada do RemoteX Host (processo principal do Electron). */
 import { app } from 'electron';
+import path from 'node:path';
 import { HostApp } from './host-app';
+import { installFileLogger } from './logger';
 
 // Diretório de dados alternativo (testes automatizados / múltiplos perfis).
 if (process.env.REMOTEX_USER_DATA) app.setPath('userData', process.env.REMOTEX_USER_DATA);
+const logFile = installFileLogger(path.join(app.getPath('userData'), 'logs'));
+console.log(`[remotex] RemoteX Host ${app.getVersion()} iniciando (${process.platform} ${process.arch}); log em ${logFile}`);
 
 // Expõe endereços IP locais reais nos candidatos ICE (conexão direta na mesma rede Wi-Fi).
 // Os candidatos só são enviados ao celular DEPOIS que o acesso foi autorizado.

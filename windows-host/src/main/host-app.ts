@@ -97,8 +97,11 @@ export class HostApp {
   // Inicialização
   // =========================================================================================
   async start(): Promise<void> {
+    console.log('[host] verificando privilégios');
     this.elevated = await isProcessElevated();
+    console.log(`[host] administrador: ${this.elevated}`);
     this.injector = await createInjector();
+    console.log(`[host] injetor de entrada: ${this.injector.name}`);
     this.dispatcher = new InputDispatcher({
       injector: this.injector,
       getDisplayRect: () => this.session?.displayRect ?? physicalRect(findDisplay(this.captureDisplayId)),
@@ -108,15 +111,19 @@ export class HostApp {
 
     const c = this.store.get();
     if (!c.hostKey) this.store.update((cfg) => (cfg.hostKey = generateDeviceKeyPair()));
-
+    console.log('[host] identidade criptográfica pronta');
     this.setupDisplayMedia();
+    console.log('[host] captura de tela configurada');
     this.registerIpc();
-
+    console.log('[host] IPC registrado');
     this.windows.createEngine();
+    console.log('[host] janela de mídia criada');
     if (!this.opts.background) this.windows.showMain();
     this.tray.create();
+    console.log('[host] janelas e bandeja criadas');
 
     this.signaling.on('status', (s) => {
+      console.log(`[host] sinalização: ${s}${this.signaling.lastError ? ` (${this.signaling.lastError})` : ''}`);
       this.status = s;
       this.statusMessage = s === 'offline' ? this.signaling.lastError : '';
       this.pushState();
@@ -127,6 +134,7 @@ export class HostApp {
     this.signaling.on('message', (m) => this.onSignal(m));
 
     await this.ensureRegistered();
+    console.log(`[host] dispositivo ${this.store.get().deviceId ?? '(não registrado)'} no servidor ${this.store.get().serverUrl}`);
     this.signaling.start();
     this.pushState();
   }
@@ -158,7 +166,9 @@ export class HostApp {
     this.status = 'registering';
     this.pushState();
     try {
+      console.log(`[host] registrando em ${c.serverUrl}`);
       const res = await fetch(`${c.serverUrl.replace(/\/+$/, '')}/api/devices/register`, {
+        signal: AbortSignal.timeout(15_000),
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ kind: 'host', name: c.deviceName, platform: process.platform, appVersion: APP_VERSION, publicKey: c.hostKey!.publicKey }),
@@ -174,6 +184,7 @@ export class HostApp {
       this.signaling.restart();
       return null;
     } catch (err: any) {
+      console.error('[host] falha no registro', err);
       this.status = 'error';
       this.statusMessage = `Não foi possível registrar no servidor ${c.serverUrl}: ${err.message || err}`;
       this.pushState();
@@ -186,6 +197,7 @@ export class HostApp {
     const c = this.store.get();
     if (!c.deviceId || !c.deviceToken) return;
     await fetch(`${c.serverUrl.replace(/\/+$/, '')}/api/devices/me`, {
+      signal: AbortSignal.timeout(15_000),
       method: 'PATCH',
       headers: { 'content-type': 'application/json', authorization: `Device ${c.deviceId}:${c.deviceToken}` },
       body: JSON.stringify({ name: c.deviceName }),
@@ -215,6 +227,7 @@ export class HostApp {
   private iceServersFor = new Map<string, any[]>();
 
   private onIncoming(sessionId: string, client: PeerInfo, clientNonce: string, iceServers: any[]): void {
+    console.log(`[host] pedido de acesso ${sessionId} de ${client.name} (${client.id}) ip=${client.ip ?? '?'}`);
     const c = this.store.get();
     const entry: HistoryEntry = {
       sessionId,
@@ -285,6 +298,7 @@ export class HostApp {
   }
 
   private onAuthorized(sessionId: string, out: Extract<NonNullable<ReturnType<AuthManager['handle']>>, { type: 'authorized' }>): void {
+    console.log(`[host] sessão ${sessionId} autorizada (${out.method}) permissões=${Object.entries(out.permissions).filter(([, v]) => v).map(([k]) => k).join(',')}`);
     if (this.session) {
       this.relay(sessionId, { k: 'auth.result', ok: false, code: 'BUSY', reason: 'O computador já está em uma sessão' });
       this.signaling.send({ t: 'session.end', sessionId, reason: 'busy' });
@@ -453,9 +467,6 @@ export class HostApp {
           this.updateSas();
         }
         return this.relay(s.id, ev.payload);
-      case 'capture':
-        s.displayRect = physicalRect(findDisplay(this.captureDisplayId));
-        return this.pushState();
       case 'channel-open':
         return this.sendWelcome();
       case 'state':
@@ -493,6 +504,10 @@ export class HostApp {
         return this.pushState();
       case 'rec-state':
         return void this.onRecState(ev.state, ev.mime, ev.message);
+      case 'capture':
+        console.log(`[host] captura ${ev.width}x${ev.height} áudio=${ev.audio} fonte="${ev.label}"`);
+        s.displayRect = physicalRect(findDisplay(this.captureDisplayId));
+        return this.pushState();
       case 'error':
         console.error('[engine]', ev.message);
         if (!s.connected && /NotAllowed|NotFound|NotReadable|getDisplayMedia/i.test(ev.message)) {
@@ -841,6 +856,7 @@ export class HostApp {
   endSession(reason: string, notifyPeer = true): void {
     const s = this.session;
     if (!s) return;
+    console.log(`[host] sessão ${s.id} encerrada: ${reason}`);
     this.session = null;
     for (const t of s.timers) clearTimeout(t);
     if (s.disconnectTimer) clearTimeout(s.disconnectTimer);

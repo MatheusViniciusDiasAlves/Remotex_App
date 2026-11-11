@@ -1,0 +1,54 @@
+# Empacotamento do RemoteX Host para Windows (instalador NSIS).
+# Gerar:  npm run dist:win   (em Windows, Linux ou macOS)
+appId: com.remotex.host
+productName: RemoteX Host
+copyright: Copyright © 2026 RemoteX
+directories:
+  output: release
+  buildResources: assets
+files:
+  - dist/**/*
+  - "!dist/**/*.map"
+  - assets/**/*
+  - package.json
+  - "!node_modules/@koromix/koffi-linux-*/**"
+  - "!node_modules/@koromix/koffi-darwin-*/**"
+asar: true
+asarUnpack:
+  - node_modules/koffi/**
+  - node_modules/@koromix/**
+# O binário nativo do koffi para Windows é baixado por scripts/fetch-win-native.sh;
+# não recompilar dependências nativas na máquina de build.
+npmRebuild: false
+nodeGypRebuild: false
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: assets/icon.ico
+  # Executa sem privilégios. A elevação (quando necessária) usa o consentimento do UAC.
+  requestedExecutionLevel: asInvoker
+  # Aplica ícone e metadados ao .exe (rcedit; fora do Windows requer Wine).
+  # Assinatura de código: defina CSC_LINK/CSC_KEY_PASSWORD (certificado Authenticode) ao gerar.
+  signAndEditExecutable: true
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: RemoteX Host
+  runAfterFinish: true
+  installerIcon: assets/icon.ico
+  uninstallerIcon: assets/icon.ico
+  installerLanguages:
+    - pt_BR
+  language: "1046"
+  deleteAppDataOnUninstall: false
+  artifactName: RemoteX-Host-Setup-${version}.${ext}
+# Canal de atualizações: gera latest.yml (versão + SHA-512 do instalador) para o servidor de downloads.
+publish:
+  provider: generic
+  url: https://remotex.example.com/download/
+  channel: latest
