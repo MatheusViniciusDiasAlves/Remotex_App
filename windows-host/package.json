@@ -9,8 +9,8 @@
   "scripts": {
     "build": "node build.mjs",
     "start": "node build.mjs && electron .",
-    "dist:win": "NODE_ENV=production node build.mjs && bash scripts/fetch-win-native.sh && electron-builder --win nsis --x64 --publish never",
-    "dist:dir": "NODE_ENV=production node build.mjs && bash scripts/fetch-win-native.sh && electron-builder --win dir --x64 --publish never"
+    "dist:win": "node build.mjs --prod && node scripts/fetch-win-native.mjs && electron-builder --win nsis --x64 --publish never",
+    "dist:dir": "node build.mjs --prod && node scripts/fetch-win-native.mjs && electron-builder --win dir --x64 --publish never"
   },
   "dependencies": {
     "koffi": "3.3.4"

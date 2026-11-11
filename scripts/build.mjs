@@ -11,9 +11,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const targets = process.argv.slice(2);
+const targets = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const want = (t) => targets.length === 0 || targets.includes(t);
-const prod = process.env.NODE_ENV === 'production';
+const prod = process.env.NODE_ENV === 'production' || process.argv.includes('--prod');
 
 async function buildServer() {
   const common = {

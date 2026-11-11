@@ -3,6 +3,11 @@
 # DATABASE_URL apontando para ele. Usado pelos testes de integração e E2E.
 set -euo pipefail
 
+# Banco já fornecido (ex.: serviço PostgreSQL do CI): usa como está.
+if [ -n "${DATABASE_URL:-}" ] && [ "${REMOTEX_USE_EXISTING_DB:-0}" = "1" ]; then
+  exec "$@"
+fi
+
 DB_NAME="${REMOTEX_TEST_DB:-remotex_test}"
 DB_USER="${REMOTEX_TEST_DB_USER:-remotex}"
 DB_PASS="${REMOTEX_TEST_DB_PASS:-remotex}"

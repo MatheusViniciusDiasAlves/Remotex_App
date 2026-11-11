@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const out = path.join(here, 'dist');
-const prod = process.env.NODE_ENV === 'production';
+const prod = process.env.NODE_ENV === 'production' || process.argv.includes('--prod');
 const tsconfig = path.join(root, 'tsconfig.json');
 
 fs.rmSync(out, { recursive: true, force: true });

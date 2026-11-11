@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Linux — tipos, testes unitários, integração e E2E
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: remotex
+          POSTGRES_PASSWORD: remotex
+          POSTGRES_DB: remotex_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U remotex" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://remotex:remotex@127.0.0.1:5432/remotex_test
+      REMOTEX_USE_EXISTING_DB: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Dependências
+        run: |
+          npm ci
+          npm --prefix windows-host ci
+          sudo apt-get update -q
+          sudo apt-get install -y -q xvfb openbox x11-utils libxtst6
+          npm install --no-save playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: Verificação de tipos
+        run: |
+          npx tsc -p tsconfig.json --noEmit
+          npx tsc -p windows-host/tsconfig.json
+      - name: Testes unitários
+        run: npx vitest run tests/unit
+      - name: Testes de integração (PostgreSQL + WebSocket + X11)
+        run: xvfb-run -a npx vitest run tests/integration
+      - name: Teste ponta a ponta (servidor + host Electron + celular emulado)
+        run: bash scripts/run-e2e.sh
+      - name: Artefatos do E2E
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: tests/e2e/.artifacts
+
+  android:
+    name: Android — APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Ferramentas Android (Ubuntu)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q aapt zipalign apksigner dalvik-exchange android-sdk-platform-23
+      - name: Build do APK
+        run: bash android-app/tools/build-apk.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: remotex-android-apk
+          path: dist/downloads/*.apk
+
+  windows:
+    name: Windows — injetor real (SendInput) e instalador
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Testes unitários (inclui SendInput/GetCursorPos no Windows real)
+        run: npx vitest run tests/unit
+      - name: Instalador NSIS
+        working-directory: windows-host
+        run: |
+          npm ci
+          npm run dist:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: remotex-host-windows-installer
+          path: |
+            windows-host/release/*.exe
+            windows-host/release/latest.yml
