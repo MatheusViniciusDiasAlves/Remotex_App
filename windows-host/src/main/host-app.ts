@@ -30,6 +30,8 @@ import type { AuthMethod, PeerInfo, RelayPayload, ServerToClient } from '@remote
 import { formatDeviceId } from '@remotex/shared/ids';
 import { APP_VERSION } from '@remotex/shared/version';
 
+const DEBUG_INPUT = process.env.REMOTEX_DEBUG_INPUT === '1';
+
 interface ActiveSession {
   id: string;
   client: PeerInfo;
@@ -471,7 +473,10 @@ export class HostApp {
       case 'control':
         return this.onControl(ev.msg);
       case 'motion':
-        if (s.verified && ev.msg?.k === 'mv') this.dispatcher!.handle(ev.msg);
+        if (s.verified && ev.msg?.k === 'mv') {
+          const r = this.dispatcher!.handle(ev.msg);
+          if (DEBUG_INPUT) console.log('[motion]', JSON.stringify(ev.msg), '→', JSON.stringify(r));
+        }
         return;
       case 'stats':
         s.stats = {
@@ -598,6 +603,7 @@ export class HostApp {
 
   private onControl(msg: any): void {
     const s = this.session;
+    if (DEBUG_INPUT) console.log('[control]', msg?.k, s ? `verified=${s.verified}` : 'sem sessão');
     if (!s || !msg || typeof msg.k !== 'string') return;
     if (msg.k === 'bind') {
       if (s.verified) return;
@@ -615,6 +621,7 @@ export class HostApp {
 
     if (isInputEvent(msg)) {
       const r = this.dispatcher!.handle(msg);
+      if (DEBUG_INPUT) console.log('[input]', JSON.stringify(msg), '→', JSON.stringify(r), JSON.stringify(s.displayRect));
       if (r.reason === 'forbidden') this.forbidden(msg.k === 'text' || msg.k === 'key' || msg.k === 'combo' ? 'teclado' : 'controle do mouse');
       if (r.ok && (msg.k === 'click' || (msg.k === 'btn' && !msg.down))) this.scheduleCaretCheck();
       return;

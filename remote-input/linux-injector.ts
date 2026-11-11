@@ -11,6 +11,14 @@ import { keyDef } from './keymap';
 
 const XK_Shift_L = 0xffe1;
 
+/** Caracteres do português pré-mapeados em keycodes livres (evita corrida no 1º uso). */
+const PREMAPPED = 'áéíóúãõâêôçà';
+
+/** Pausa síncrona curta (o mapa de teclado precisa chegar ao aplicativo antes da tecla). */
+function syncSleep(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
 export class LinuxX11Injector implements InputInjector {
   readonly name = 'linux-xtest';
   private x11 = koffi.load('libX11.so.6');
@@ -38,6 +46,11 @@ export class LinuxX11Injector implements InputInjector {
   private per = 1;
   private mapping: number[] = [];
   private spareKeycode = 0;
+  /** Keycodes sem símbolo usados em rodízio para caracteres fora do layout atual. */
+  private spares: number[] = [];
+  private nextSpare = 0;
+  private assigned = new Map<number, number>(); // keysym → keycode livre remapeado
+  private dynamicFrom = 0;
 
   constructor(displayName: string | null = null) {
     this.dpy = this.XOpenDisplay(displayName);
@@ -55,15 +68,26 @@ export class LinuxX11Injector implements InputInjector {
     const count = this.maxKc - this.minKc + 1;
     const ptr = this.XGetKeyboardMapping(this.dpy, this.minKc, count, per);
     this.per = per[0];
-    this.mapping = koffi.decode(ptr, 'unsigned long', count * this.per) as number[];
+    // koffi devolve unsigned long (64 bits) como BigUint64Array: converte para number.
+    const raw = koffi.decode(ptr, 'unsigned long', count * this.per) as ArrayLike<number | bigint>;
+    this.mapping = Array.from(raw, (v) => Number(v));
     this.XFree(ptr);
-    // keycode livre (sem nenhum símbolo) para remapear caracteres especiais
+    // keycodes livres (sem nenhum símbolo) para remapear caracteres especiais
     for (let kc = this.maxKc; kc >= this.minKc; kc--) {
-      const syms = this.symsOf(kc);
-      if (syms.every((s) => s === 0)) {
-        this.spareKeycode = kc;
-        break;
-      }
+      if (this.symsOf(kc).every((s) => s === 0)) this.spares.push(kc);
+    }
+    this.spareKeycode = this.spares[0] ?? 0;
+    // Pré-mapeia acentos comuns; os keycodes restantes ficam para remapeamento dinâmico.
+    if (this.spares.length > 4) {
+      const pre = Array.from(PREMAPPED).slice(0, this.spares.length - 4);
+      pre.forEach((ch, i) => {
+        const sym = ch.codePointAt(0)!;
+        const kc = this.spares[i];
+        this.XChangeKeyboardMapping(this.dpy, kc, 2, [sym, sym], 1);
+        this.assigned.set(sym, kc);
+      });
+      this.dynamicFrom = pre.length;
+      this.XSync(this.dpy, 0);
     }
   }
 
@@ -110,36 +134,44 @@ export class LinuxX11Injector implements InputInjector {
     return this.flush();
   }
 
+  /**
+   * Usa um keycode livre diferente para cada caractere novo (rodízio). Reutilizar o mesmo keycode
+   * em sequência causa troca de caracteres, pois o aplicativo traduz a tecla com o mapa já alterado.
+   */
+  private spareFor(keysym: number): number {
+    const cached = this.assigned.get(keysym);
+    if (cached) return cached;
+    const dyn = this.spares.slice(this.dynamicFrom);
+    if (!dyn.length) return 0;
+    const kc = dyn[this.nextSpare % dyn.length];
+    this.nextSpare++;
+    for (const [sym, code] of this.assigned) if (code === kc) this.assigned.delete(sym);
+    this.XChangeKeyboardMapping(this.dpy, kc, 2, [keysym, keysym], 1);
+    this.XSync(this.dpy, 0);
+    syncSleep(30);
+    this.assigned.set(keysym, kc);
+    return kc;
+  }
+
   typeText(text: string): InjectResult {
-    let remapped = false;
     for (const ch of Array.from(text)) {
       const cp = ch.codePointAt(0)!;
       const keysym = ch === '\n' ? 0xff0d : ch === '\t' ? 0xff09 : cp < 0x100 ? cp : 0x01000000 | cp;
-      let kc = this.XKeysymToKeycode(this.dpy, keysym) as number;
+      let kc = this.assigned.get(keysym) ?? (this.XKeysymToKeycode(this.dpy, keysym) as number);
       let shift = false;
-      if (kc) {
+      if (kc && !this.assigned.has(keysym)) {
         const syms = this.symsOf(kc);
         if (syms[0] === keysym) shift = false;
         else if (syms[1] === keysym) shift = true;
         else kc = 0; // apenas em níveis AltGr — usa remapeamento
       }
-      if (!kc) {
-        if (!this.spareKeycode) continue;
-        kc = this.spareKeycode;
-        this.XChangeKeyboardMapping(this.dpy, kc, 2, [keysym, keysym], 1);
-        this.XSync(this.dpy, 0);
-        remapped = true;
-      }
+      if (!kc) kc = this.spareFor(keysym);
+      if (!kc) continue;
       const shiftKc = shift ? (this.XKeysymToKeycode(this.dpy, XK_Shift_L) as number) : 0;
       if (shiftKc) this.XTestFakeKeyEvent(this.dpy, shiftKc, 1, 0);
       this.XTestFakeKeyEvent(this.dpy, kc, 1, 0);
       this.XTestFakeKeyEvent(this.dpy, kc, 0, 0);
       if (shiftKc) this.XTestFakeKeyEvent(this.dpy, shiftKc, 0, 0);
-      if (remapped) this.XSync(this.dpy, 0);
-    }
-    if (remapped && this.spareKeycode) {
-      this.XChangeKeyboardMapping(this.dpy, this.spareKeycode, 2, [0, 0], 1);
-      this.XSync(this.dpy, 0);
     }
     return this.flush();
   }
@@ -155,7 +187,11 @@ export class LinuxX11Injector implements InputInjector {
   }
 
   dispose(): void {
-    if (this.dpy) this.XCloseDisplay(this.dpy);
+    if (this.dpy) {
+      for (const kc of new Set(this.assigned.values())) this.XChangeKeyboardMapping(this.dpy, kc, 2, [0, 0], 1);
+      this.XSync(this.dpy, 0);
+      this.XCloseDisplay(this.dpy);
+    }
     this.dpy = null;
   }
 }

@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html, body { -webkit-user-select: none; user-select: none; margin: 0; width: 1280px; height: 800px; overflow: hidden; background: #202830; font: 20px sans-serif; color: #fff; }
+      #t { position: absolute; left: 100px; top: 200px; width: 600px; height: 300px; font-size: 28px; }
+      #zone { position: absolute; left: 760px; top: 200px; width: 420px; height: 300px; background: #3a4a6a; }
+      #pad { position: absolute; left: 100px; top: 560px; width: 200px; height: 200px; background: #000; }
+      #scroll { position: absolute; left: 760px; top: 540px; width: 420px; height: 220px; overflow: auto; background: #2d3b2d; }
+      #scroll div { height: 4000px; width: 3000px; background: linear-gradient(#2d3b2d, #6b8f6b); }
+    </style>
+  </head>
+  <body>
+    <textarea id="t"></textarea>
+    <div id="zone"></div>
+    <div id="pad"></div>
+    <div id="scroll"><div></div></div>
+    <script>
+      const log = (ev) => window.target.log(ev);
+      const t = document.getElementById('t');
+      const pad = document.getElementById('pad');
+      t.addEventListener('input', () => log({ type: 'value', value: t.value }));
+      document.addEventListener('keydown', (e) => log({ type: 'keydown', key: e.key, code: e.code, ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey }));
+      document.addEventListener('mousedown', (e) => {
+        log({ type: 'mousedown', button: e.button, x: e.screenX, y: e.screenY, target: e.target.id });
+        if (e.target === pad) pad.style.background = pad.style.background === 'rgb(255, 255, 255)' ? '#000' : '#fff';
+      });
+      document.addEventListener('mouseup', (e) => log({ type: 'mouseup', button: e.button, x: e.screenX, y: e.screenY, target: e.target.id }));
+      document.addEventListener('dblclick', (e) => log({ type: 'dblclick', x: e.screenX, y: e.screenY }));
+      document.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        log({ type: 'contextmenu', x: e.screenX, y: e.screenY, target: e.target.id });
+      });
+      document.addEventListener('dragstart', (e) => e.preventDefault());
+      let lastMove = 0;
+      document.addEventListener('mousemove', (e) => {
+        const now = Date.now();
+        if (now - lastMove < 30) return;
+        lastMove = now;
+        log({ type: 'mousemove', x: e.screenX, y: e.screenY, buttons: e.buttons });
+      });
+      document.addEventListener('wheel', (e) => log({ type: 'wheel', dx: e.deltaX, dy: e.deltaY, target: e.target.id }), { passive: true });
+    </script>
+  </body>
+</html>

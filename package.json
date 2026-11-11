@@ -15,7 +15,7 @@
     "build:host": "npm --prefix windows-host run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run tests/unit",
-    "test:integration": "bash scripts/with-test-db.sh vitest run tests/integration",
+    "test:integration": "bash scripts/with-test-db.sh bash -c 'if command -v xvfb-run >/dev/null && [ -z \"$DISPLAY\" ]; then exec xvfb-run -a vitest run tests/integration; else exec vitest run tests/integration; fi'",
     "test:e2e": "bash scripts/run-e2e.sh",
     "db:migrate": "node dist/server/migrate.js",
     "start": "node dist/server/server.js",

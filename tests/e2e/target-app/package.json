@@ -1,0 +1,6 @@
+{
+  "name": "remotex-e2e-target",
+  "private": true,
+  "type": "commonjs",
+  "main": "main.js"
+}

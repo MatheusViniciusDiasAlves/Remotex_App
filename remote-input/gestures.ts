@@ -44,6 +44,8 @@ export interface GestureHandlers {
   tap?(p: Pt, count: number): void;
   twoFingerTap?(p: Pt): void;
   longPress?(p: Pt): void;
+  /** Dedo levantado após um toque prolongado, sem arrastar. */
+  longPressUp?(p: Pt): void;
   dragStart?(p: Pt, kind: DragKind): void;
   dragMove?(p: Pt, delta: Pt, dtMs: number): void;
   dragEnd?(p: Pt, kind: DragKind): void;
@@ -207,6 +209,7 @@ export class GestureRecognizer {
         this.handlers.dragEnd?.(p, this.dragKind);
         this.lastTap = null;
       } else if (this.state === 'longpressed') {
+        this.handlers.longPressUp?.(this.start);
         this.lastTap = null;
       }
       this.pointers.delete(id);

@@ -166,6 +166,7 @@ describe('GestureRecognizer', () => {
         tap: (p, n) => ev.push(`tap${n}@${p.x},${p.y}`),
         twoFingerTap: () => ev.push('tap2f'),
         longPress: () => ev.push('long'),
+        longPressUp: () => ev.push('longUp'),
         dragStart: (_p, k) => ev.push(`dragStart:${k}`),
         dragMove: (p) => ev.push(`drag@${p.x},${p.y}`),
         dragEnd: (_p, k) => ev.push(`dragEnd:${k}`),
@@ -196,7 +197,7 @@ describe('GestureRecognizer', () => {
     g.down(1, { x: 10, y: 10 }, now());
     advance(600);
     g.up(1, { x: 10, y: 10 }, now());
-    expect(ev).toEqual(['long']);
+    expect(ev).toEqual(['long', 'longUp']);
   });
   it('arrastar com um dedo', () => {
     const { g, ev, advance, now } = setup();

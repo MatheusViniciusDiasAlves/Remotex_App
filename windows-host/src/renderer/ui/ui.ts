@@ -43,11 +43,16 @@ const PATH_LABEL: Record<string, string> = { 'direct-lan': 'Direta (rede local)'
 
 function permChecks(current: PermissionSet, policy: PermissionSet | null, onChange: (p: PermissionSet) => void, prefix: string) {
   const wrap = h('div', { class: 'perm-grid' });
+  // Cópia viva: várias alterações seguidas se acumulam (não partem do valor original).
+  const live: PermissionSet = { ...current };
   for (const k of PERMISSION_KEYS) {
     if (k === 'view') continue;
     const allowed = policy ? policy[k] : true;
     const input = h('input', { type: 'checkbox', checked: current[k] && allowed, disabled: !allowed, 'data-testid': `${prefix}-${k}` });
-    input.addEventListener('change', () => onChange({ ...current, [k]: input.checked }));
+    input.addEventListener('change', () => {
+      live[k] = input.checked;
+      onChange({ ...live });
+    });
     wrap.append(
       h('label', { class: 'perm' + (allowed ? '' : ' disabled'), title: allowed ? '' : 'Bloqueado pela política do computador' }, input, h('span', null, PERMISSION_LABELS[k as PermissionKey])),
     );
