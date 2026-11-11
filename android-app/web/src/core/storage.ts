@@ -108,6 +108,8 @@ function write(key: string, value: unknown): void {
 function defaultServer(): string {
   const injected = (window as any).REMOTEX_DEFAULT_SERVER as string | undefined;
   if (injected) return injected;
+  const fromApp = (window as any).RemoteXNative?.defaultServer?.() as string | undefined;
+  if (fromApp) return fromApp;
   if (location.protocol === 'http:' || location.protocol === 'https:') {
     if (!/appassets\.androidplatform\.net$/.test(location.hostname)) return location.origin;
   }

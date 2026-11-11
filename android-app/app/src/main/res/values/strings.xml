@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RemoteX</string>
+    <string name="mic_denied">Permissão de microfone negada. Ative em Configurações do Android para falar com o computador.</string>
+</resources>
