@@ -1,0 +1,9 @@
+# HTTPS automático (Let's Encrypt) e WebSocket para o servidor RemoteX.
+{$DOMAIN} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	reverse_proxy remotex:8080
+}

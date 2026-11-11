@@ -1,0 +1,1 @@
+Coloque aqui o instalador do Windows e o APK (servidos em https://SEU_DOMINIO/download/).

@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+windows-host/release
+android-app/build
+android-app/tools/.cache
+tests/e2e/.artifacts
+.git
+deploy/.env

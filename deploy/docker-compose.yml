@@ -1,0 +1,72 @@
+# RemoteX — servidor completo:
+#   docker compose --env-file .env up -d --build
+# Serviços: PostgreSQL, servidor RemoteX, TURN (coturn) e Caddy (HTTPS automático Let's Encrypt).
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: remotex
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD}
+      POSTGRES_DB: remotex
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U remotex"]
+      interval: 5s
+      retries: 20
+
+  remotex:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://remotex:${DB_PASSWORD}@db:5432/remotex
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET (32+ caracteres)}
+      TRUST_PROXY: "true"
+      STUN_URLS: stun:${DOMAIN}:3478
+      TURN_URLS: turn:${DOMAIN}:3478?transport=udp,turn:${DOMAIN}:3478?transport=tcp,turns:${DOMAIN}:5349?transport=tcp
+      TURN_SECRET: ${TURN_SECRET:?defina TURN_SECRET}
+      TURN_TTL: "21600"
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+    volumes:
+      - ./downloads:/app/downloads:ro
+    expose:
+      - "8080"
+
+  turn:
+    image: coturn/coturn:4.6
+    restart: unless-stopped
+    network_mode: host
+    command: >-
+      -c /etc/coturn/turnserver.conf
+      --static-auth-secret=${TURN_SECRET}
+      --realm=${DOMAIN}
+      --external-ip=${PUBLIC_IP}
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+      - caddy-data:/certs:ro
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - remotex
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:
