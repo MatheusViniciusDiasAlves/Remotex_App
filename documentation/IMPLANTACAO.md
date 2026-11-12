@@ -1,5 +1,39 @@
 # Implantação, build e distribuição
 
+## 0. Instalação automática no computador local
+
+| | Windows 10/11 | Linux (Ubuntu/Debian) |
+|---|---|---|
+| Instalador | `scripts\instalar-windows.ps1` | `scripts/instalar-linux.sh` |
+| Iniciar | `scripts\iniciar-local.ps1` (`-SoServidor`, `-SoHost`) | `scripts/iniciar-local.sh` (`--so-servidor`) |
+| Programas | winget: Git, Node.js LTS, PostgreSQL 16 | apt: Git, Node.js 22 (NodeSource, se faltar), PostgreSQL, bibliotecas do Electron |
+| Extras | `-ComAndroid` (Android Studio + JDK 17), `-ComDocker` (Docker Desktop) | `--testes` (Xvfb, openbox, Playwright), `--android` (ferramentas do `build-apk.sh`), `--docker`, `--tudo` |
+
+O que o instalador faz, nesta ordem:
+
+1. Instala só o que estiver faltando (Node.js precisa ser 20 ou mais novo).
+2. Se não estiver dentro do projeto, clona o repositório em `~/Remotex_App`.
+3. `npm ci` na raiz e em `windows-host/`, e garante o binário do Electron.
+4. Cria no PostgreSQL o usuário e o banco **`remotex_local`** com senha aleatória. No Linux com
+   `--testes`, cria também o usuário `remotex` (senha `remotex`) e o banco `remotex_test`, usados por
+   `scripts/with-test-db.sh`.
+5. Grava **`.env.local`** (fora do Git) com `DATABASE_URL`, `JWT_SECRET` e `PORT=8080`. Numa nova
+   execução os segredos existentes são mantidos.
+6. Compila servidor, app web e RemoteX Host e aplica as migrações.
+7. Windows: libera a porta 8080 no Firewall (rede privada) para o celular conectar pela Wi-Fi
+   (`-SemFirewall` para não mexer).
+
+Observações:
+
+- **Windows**: se o PostgreSQL for instalado agora, a senha do usuário `postgres` é gerada e guardada
+  em `.env.local` (`POSTGRES_SUPERUSER_PASSWORD`); se ele já existia, o script pergunta a senha (ou use
+  `-SenhaPostgres`). Se o winget faltar, instale o "Instalador de Aplicativo" pela Microsoft Store.
+  Os testes de integração e E2E dependem de X11/Xvfb e rodam no Linux; no Windows use `npm test`.
+- **Linux**: os testes de integração/E2E como usuário comum precisam do banco já criado:
+  `export REMOTEX_USE_EXISTING_DB=1 DATABASE_URL=postgres://remotex:remotex@127.0.0.1:5432/remotex_test`.
+- Os arquivos `.ps1` são salvos com BOM UTF-8 (o Windows PowerShell 5.1 precisa dele para ler os
+  acentos); por isso a instalação em uma linha usa `.TrimStart([char]0xFEFF)`.
+
 ## 1. Servidor (internet) — Docker Compose
 
 Requisitos: um servidor Linux com IP público, um domínio apontando para ele e as portas

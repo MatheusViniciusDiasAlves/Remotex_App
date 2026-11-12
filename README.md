@@ -29,6 +29,30 @@ autorização ponta a ponta e criptografia.
 | [`deploy/`](deploy) | Docker Compose: PostgreSQL, servidor, TURN (coturn), HTTPS (Caddy) |
 | [`documentation/`](documentation) | Documentação completa |
 
+## Instalação automática no seu computador
+
+Um script instala tudo o que falta (Git, Node.js, PostgreSQL), baixa as dependências, cria o banco,
+compila e deixa pronto para iniciar. Pode ser executado de novo sem problemas.
+
+**Windows** — no PowerShell (o Windows pedirá permissão de administrador para instalar os programas):
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/MatheusViniciusDiasAlves/Remotex_App/claude/laughing-fermi-nok1jq/scripts/instalar-windows.ps1).TrimStart([char]0xFEFF)))
+```
+
+Ou, com o projeto já baixado: `powershell -ExecutionPolicy Bypass -File scripts\instalar-windows.ps1`
+(opções: `-ComAndroid` instala Android Studio + JDK 17, `-ComDocker` instala o Docker Desktop).
+Depois: `powershell -ExecutionPolicy Bypass -File scripts\iniciar-local.ps1` abre o servidor e o RemoteX Host.
+
+**Linux (Ubuntu/Debian)**:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/MatheusViniciusDiasAlves/Remotex_App/claude/laughing-fermi-nok1jq/scripts/instalar-linux.sh)
+```
+
+Ou `bash scripts/instalar-linux.sh [--testes] [--android] [--docker] [--tudo]`; depois
+`bash scripts/iniciar-local.sh`. Detalhes em [Implantação](documentation/IMPLANTACAO.md#0-instalação-automática-no-computador-local).
+
 ## Início rápido (desenvolvimento)
 
 ```bash
