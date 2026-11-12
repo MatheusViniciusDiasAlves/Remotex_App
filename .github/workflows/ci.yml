@@ -23,7 +23,7 @@ jobs:
           POSTGRES_DB: remotex_test
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U remotex" --health-interval 5s --health-timeout 5s --health-retries 10
+          --health-cmd "pg_isready -U remotex -d remotex_test" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: postgres://remotex:remotex@127.0.0.1:5432/remotex_test
       REMOTEX_USE_EXISTING_DB: "1"
@@ -36,6 +36,9 @@ jobs:
         run: |
           npm ci
           npm --prefix windows-host ci
+          # garante o binário do Electron (o postinstall pode não baixá-lo no runner)
+          node windows-host/node_modules/electron/install.js
+          test -x windows-host/node_modules/electron/dist/electron
           sudo apt-get update -q
           sudo apt-get install -y -q xvfb openbox x11-utils libxtst6
           npm install --no-save playwright@1.63.0
